@@ -1,0 +1,25 @@
+[submodule "node_modules/http-codec"]
+	url = git@github.com:creationix/http-codec.git
+	ref = refs/heads/master
+	prefix = hymep3jc-1al653q
+	path = node_modules/http-codec
+[submodule "node_modules/bodec"]
+	url = git@github.com:creationix/bodec.git
+	ref = refs/heads/master
+	prefix = hymespro-1wz1v5l
+	path = node_modules/bodec
+[submodule "node_modules/culvert"]
+	url = git@github.com:creationix/culvert.git
+	ref = refs/heads/master
+	prefix = hymetrql-1dgpt06
+	path = node_modules/culvert
+[submodule "node_modules/gen-run"]
+	url = git@github.com:creationix/gen-run.git
+	ref = refs/heads/master
+	prefix = hymg56bq-1vtsimo
+	path = node_modules/gen-run
+[submodule "node_modules/git-sha1"]
+	url = git@github.com:creationix/git-sha1.git
+	ref = refs/heads/master
+	prefix = hymhsdhq-1ydqndv
+	path = node_modules/git-sha1
