@@ -28,3 +28,13 @@
 	ref = refs/heads/master
 	prefix = hyntzjnj-1x1bl5k
 	path = node_modules/websocket-codec
+[submodule "node_modules/wheaty-cjs-bundler"]
+	url = git@github.com:creationix/wheaty-cjs-bundler.git
+	ref = refs/heads/master
+	prefix = hynu9gm4-h2oixc
+	path = node_modules/wheaty-cjs-bundler
+[submodule "node_modules/tedit-regenerator"]
+	url = git@github.com:creationix/tedit-regenerator.git
+	ref = refs/heads/master
+	prefix = hynu9nlk-15f7doy
+	path = node_modules/tedit-regenerator

@@ -1,10 +1,25 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Test Client</title>
-    <script src="bodec.js" charset="utf-8"></script>
-    <script src="bincodec.js" charset="utf-8"></script>
-    <script src="client.js" charset="utf-8"></script>
-  </head>
+<head>
+  <meta charset="utf-8">
+  <title>Test Client</title>
+</head>
+<body>
+  <p>Loading...</p>
+  <script>
+    // Load the plain or regenerated version depending on support result.
+    (function () {
+      var tag = document.createElement("script");
+      tag.setAttribute("async", "async");
+      tag.setAttribute("encoding", "utf-8");
+      var url = "client.js";
+      // Detect if the browser supports ES6 generators
+      try { eval("(function*(){})"); }
+      catch (err) { url += "?regenerate"; }
+      tag.setAttribute("src", url);
+      document.body.appendChild(tag);
+    }());
+  </script>
+
+</body>
 </html>

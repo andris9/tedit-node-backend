@@ -5,6 +5,16 @@ var wrapNodeSocket = require('culvert/wrap-node-socket');
 var run = require('gen-run');
 var bodec = require('bodec');
 var sha1 = require('git-sha1');
+var exec = require('./exec');
+var bincodec = require('./bincodec');
+var inspect = require('util').inspect;
+var consume = require('culvert/consume');
+
+function log() {
+  console.log([].slice.call(arguments).map(function (item) {
+    return inspect(item, {colors:true,depth:null});
+  }).join(" "));
+}
 
 var server = net.createServer(onConnection);
 server.listen(1337, function () {
@@ -104,18 +114,72 @@ function* handleRequest(channel) {
 
   channel.setCodecs(websocketCodec);
 
-  channel.take(onMessage);
+  var send = bincodec.encoder(function (chunk) {
+    return channel.put({
+      fin: 1,
+      opcode: 2,
+      body: chunk
+    });
+  });
+  var decode = bincodec.decoder(function (message) {
+    var id = message.shift();
+    log(id, message);
+    run(function* () {
+      var ret;
+      for (var i = 0, l = message.length; i < l; ++i) {
+        ret = yield* exec.call(api, message[i]);
+      }
+      return ret;
+    }, function (err, result) {
+      var message;
+      if (err) {
+        console.error(err.stack);
+        message = {id:id,err:err.stack};
+      }
+      else {
+        message = [-id, result];
+      }
+      log(message);
+      send(message);
+    });
 
-  function onMessage(err, message) {
-    if (err) throw err;
-    if (message === undefined) {
-      console.log("Disconnected");
-      return;
-    }
-    console.log("Message", message);
-    message.mask = 0;
-    channel.put(message);
-    if (message !== undefined) channel.take(onMessage);
-  }
+  });
+  consume(channel, function (item) {
+    if (item.opcode === 2) decode(item.body);
+    else log(item);
+  })(function () {
+    console.log("Disconnected");
+  });
+
 
 }
+
+var api = {
+  list: function () {
+    return [].slice.call(arguments);
+  },
+  map: function () {
+    var obj = {};
+    for (var i = 0, l = arguments.length; i < l; i += 2) {
+      obj[arguments[i]] = arguments[i + 1];
+    }
+    return obj;
+  },
+  add: function add(a, b) {
+    return a + b;
+  },
+  slowAdd: function slowAdd(a, b) {
+    return function (callback) {
+      setTimeout(function () {
+        callback(null, a + b);
+      }, 500);
+    };
+  },
+  slowerAdd: function* slowerAdd(a, b) {
+    return yield function (callback) {
+      setTimeout(function () {
+        callback(null, a + b);
+      }, 500);
+    };
+  }
+};

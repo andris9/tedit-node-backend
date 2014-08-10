@@ -16,13 +16,9 @@
 // 110cxxxx cxxxxxxxx* VALUE* array length
 // 111cxxxx cxxxxxxxx* PAIR* object length
 
-( // Module boilerplate to support cjs and browser globals.
-  (typeof module === "object" && typeof module.exports === "object" && function (m) { module.exports = m(require('bodec')); }) ||
-  (function (m) { window.bincodec = m(window.bodec); })
-)(function (bodec) {
 "use strict";
 
-var exports = {};
+var bodec = require('bodec');
 
 exports.isId = isId;
 
@@ -131,7 +127,8 @@ exports.encode = function (value) {
 exports.encoder = encoder;
 function encoder(emit) {
   return function (value) {
-    emit(encode(value));
+    var encoded = exports.encode(value);
+    emit(encoded);
   };
 }
 
@@ -364,7 +361,3 @@ if (typeof module === "object" && !module.parent) {
   console.log(bin);
   decode(bin);
 }
-
-return exports;
-
-});
