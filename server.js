@@ -154,44 +154,50 @@ function* handleRequest(channel) {
 }
 
 var fs = require('fs');
+var repo = {};
+require('git-node-fs/mixins/fs-db')(repo, "/Users/tim/Desktop/tedit.git");
+require('js-git/mixins/walkers')(repo);
+require('js-git/mixins/formats')(repo);
 
-var api = {
-  list: function () {
-    return [].slice.call(arguments);
-  },
-  map: function () {
-    var obj = {};
-    for (var i = 0, l = arguments.length; i < l; i += 2) {
-      obj[arguments[i]] = arguments[i + 1];
-    }
-    return obj;
-  },
-  add: function add(a, b) {
-    return a + b;
-  },
-  slowAdd: function slowAdd(a, b) {
-    return function (callback) {
-      setTimeout(function () {
-        callback(null, a + b);
-      }, 500);
-    };
-  },
-  slowerAdd: function* slowerAdd(a, b) {
-    return yield function (callback) {
-      setTimeout(function () {
-        callback(null, a + b);
-      }, 500);
-    };
-  },
-  readFile: function readFile(path, encoding) {
-    return function (callback) {
-      fs.readFile(path, encoding, function (err, result) {
-        if (err) {
-          if (err.code === "ENOENT") return callback();
-          return callback(err);
-        }
-        return callback(null, result);
-      });
-    }
-  }
-};
+api = repo;
+
+// var api = {
+//   list: function () {
+//     return [].slice.call(arguments);
+//   },
+//   map: function () {
+//     var obj = {};
+//     for (var i = 0, l = arguments.length; i < l; i += 2) {
+//       obj[arguments[i]] = arguments[i + 1];
+//     }
+//     return obj;
+//   },
+//   add: function add(a, b) {
+//     return a + b;
+//   },
+//   slowAdd: function slowAdd(a, b) {
+//     return function (callback) {
+//       setTimeout(function () {
+//         callback(null, a + b);
+//       }, 500);
+//     };
+//   },
+//   slowerAdd: function* slowerAdd(a, b) {
+//     return yield function (callback) {
+//       setTimeout(function () {
+//         callback(null, a + b);
+//       }, 500);
+//     };
+//   },
+//   readFile: function readFile(path, encoding) {
+//     return function (callback) {
+//       fs.readFile(path, encoding, function (err, result) {
+//         if (err) {
+//           if (err.code === "ENOENT") return callback();
+//           return callback(err);
+//         }
+//         return callback(null, result);
+//       });
+//     }
+//   }
+// };

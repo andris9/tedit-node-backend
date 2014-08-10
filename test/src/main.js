@@ -63,16 +63,7 @@ function* call(command, vars) {
 }
 
 function* main() {
-  var command = '(list (slowerAdd 1 2) (slowAdd 3 4) (add 5 6))';
-  console.log("command", command);
-  console.log("result", yield* call(command));
-  command = '(map "slower" (slowerAdd 1 2) "slow" (slowAdd 3 4) "add" (add 5 6))';
-  console.log("command", command);
-  console.log("result", yield* call(command));
-  command = '(readFile "/etc/hosts" "utf8")';
-  console.log("command", command);
-  console.log("result", yield* call(command));
-  command = '(readFile "/etc/hosts")';
+  var command = '(loadAs "commit" (readRef "refs/heads/master"))';
   console.log("command", command);
   console.log("result", yield* call(command));
 }

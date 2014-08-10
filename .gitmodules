@@ -38,3 +38,23 @@
 	ref = refs/heads/master
 	prefix = hynu9nlk-15f7doy
 	path = node_modules/tedit-regenerator
+[submodule "node_modules/git-node-fs"]
+	url = git@github.com:creationix/git-node-fs.git
+	ref = refs/heads/master
+	prefix = hynwxmwg-1qdnfie
+	path = node_modules/git-node-fs
+[submodule "node_modules/js-git"]
+	url = git@github.com:creationix/js-git.git
+	ref = refs/heads/master
+	prefix = hynwxrsf-m58jfo
+	path = node_modules/js-git
+[submodule "node_modules/pako"]
+	url = git@github.com:nodeca/pako.git
+	ref = refs/heads/master
+	prefix = hynwy9x2-cchvdk
+	path = node_modules/pako
+[submodule "node_modules/pathjoin"]
+	url = git@github.com:creationix/pathjoin.git
+	ref = refs/heads/master
+	prefix = hynwz1ho-c19oe9
+	path = node_modules/pathjoin
