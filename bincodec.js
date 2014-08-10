@@ -1,5 +1,5 @@
-"use strict";
-
+// format spec
+//
 // 00000000 null
 // 00000001 undefined
 // 00000010 false
@@ -16,7 +16,13 @@
 // 110cxxxx cxxxxxxxx* VALUE* array length
 // 111cxxxx cxxxxxxxx* PAIR* object length
 
-var bodec = require('bodec');
+( // Module boilerplate to support cjs and browser globals.
+  (typeof module === "object" && typeof module.exports === "object" && function (m) { module.exports = m(require('bodec')); }) ||
+  (function (m) { window.bincodec = m(window.bodec); })
+)(function (bodec) {
+"use strict";
+
+var exports = {};
 
 var cache = {};
 function Id(id) {
@@ -314,7 +320,7 @@ function template(string, values) {
   return current;
 }
 
-if (!module.parent) {
+if (typeof module === "object" && !module.parent) {
   var inspect = require('util').inspect;
   var decode = decoder(function (value) {
     console.log(inspect(value, {colors: true, depth: null}));
@@ -352,3 +358,7 @@ if (!module.parent) {
   console.log(bin);
   decode(bin);
 }
+
+return exports;
+
+});
