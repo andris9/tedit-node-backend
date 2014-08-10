@@ -69,4 +69,10 @@ function* main() {
   command = '(map "slower" (slowerAdd 1 2) "slow" (slowAdd 3 4) "add" (add 5 6))';
   console.log("command", command);
   console.log("result", yield* call(command));
+  command = '(readFile "/etc/hosts" "utf8")';
+  console.log("command", command);
+  console.log("result", yield* call(command));
+  command = '(readFile "/etc/hosts")';
+  console.log("command", command);
+  console.log("result", yield* call(command));
 }

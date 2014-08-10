@@ -122,8 +122,8 @@ function* handleRequest(channel) {
     });
   });
   var decode = bincodec.decoder(function (message) {
+    log(message);
     var id = message.shift();
-    log(id, message);
     run(function* () {
       var ret;
       for (var i = 0, l = message.length; i < l; ++i) {
@@ -146,13 +146,14 @@ function* handleRequest(channel) {
   });
   consume(channel, function (item) {
     if (item.opcode === 2) decode(item.body);
-    else log(item);
   })(function () {
     console.log("Disconnected");
   });
 
 
 }
+
+var fs = require('fs');
 
 var api = {
   list: function () {
@@ -181,5 +182,16 @@ var api = {
         callback(null, a + b);
       }, 500);
     };
+  },
+  readFile: function readFile(path, encoding) {
+    return function (callback) {
+      fs.readFile(path, encoding, function (err, result) {
+        if (err) {
+          if (err.code === "ENOENT") return callback();
+          return callback(err);
+        }
+        return callback(null, result);
+      });
+    }
   }
 };
