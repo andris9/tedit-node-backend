@@ -10,7 +10,7 @@ function log() {
 
 var apis = {
   list: function () {
-    return [].slice.call(arguments)
+    return [].slice.call(arguments);
   },
   map: function () {
     var obj = {};
