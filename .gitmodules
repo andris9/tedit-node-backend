@@ -23,3 +23,8 @@
 	ref = refs/heads/master
 	prefix = hymhsdhq-1ydqndv
 	path = node_modules/git-sha1
+[submodule "node_modules/websocket-codec"]
+	url = git@github.com:creationix/websocket-codec.git
+	ref = refs/heads/master
+	prefix = hyntzjnj-1x1bl5k
+	path = node_modules/websocket-codec
