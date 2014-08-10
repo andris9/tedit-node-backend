@@ -1,5 +1,8 @@
 "use strict";
 
+// TODO: Implement dot access
+// TODO: Implement def and other lisp builtins userspace
+
 var isId = require('./bincodec').isId;
 var run = require('gen-run');
 module.exports = exec;

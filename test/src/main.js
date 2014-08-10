@@ -66,4 +66,9 @@ function* main() {
   var command = '(loadAs "commit" (readRef "refs/heads/master"))';
   console.log("command", command);
   console.log("result", yield* call(command));
+  command =
+    '(def stream (logWalk (readRef "refs/heads/master")))' +
+    '(list (stream.read) (stream.read) (stream.read))';
+  console.log("command", command);
+  console.log("result", yield* call(command));
 }
