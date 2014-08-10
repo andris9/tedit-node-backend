@@ -1,11 +1,36 @@
-var bodec = require('bodec');
+var template = require('./bincodec').template;
+var exec = require('./exec');
+var inspect = require('util').inspect;
+
+function log() {
+  console.log([].slice.call(arguments).map(function (item) {
+    return inspect(item, {colors:true,depth:null});
+  }).join(" "));
+}
 
 var apis = {
-  add: function (a, b) {
+  list: function () {
+    return [].slice.call(arguments)
+  },
+  map: function () {
+    var obj = {};
+    for (var i = 0, l = arguments.length; i < l; i += 2) {
+      obj[arguments[i]] = arguments[i + 1];
+    }
+    return obj;
+  },
+  add: function add(a, b) {
     return a + b;
   },
-  slowAdd: function* (a, b) {
-    yield function (callback) {
+  slowAdd: function slowAdd(a, b) {
+    return function (callback) {
+      setTimeout(function () {
+        callback(null, a + b);
+      }, 500);
+    };
+  },
+  slowerAdd: function* slowerAdd(a, b) {
+    return yield function (callback) {
       setTimeout(function () {
         callback(null, a + b);
       }, 500);
@@ -13,76 +38,20 @@ var apis = {
   }
 };
 
-
-// A lisp-style RPC command
-var command = ["add",
-  ["slowAdd", 1, 2],
-  ["add", 3, 4]
-];
-
-var rules = [
-  BIN,      /^\0[^\0]*\0,
-  null,     /^\s+/,
-  null,     /^--.*/,
-  CONSTANT, /^(?:true|false|null)\b/,
-  CONSTANT, /^-?[0-9]+/,
-  CONSTANT, /^"(?:[^\r\n"\\]|\\.)*"/,
-  ID,       /^[^:;'",.`(){}[\]]+/,
-  CHAR,     /^./,
-];
-
-//        "{  }  (  )  [  ]     \n")
-// <Buffer 7b 7d 28 29 5b 5d 20 0a>
-
-
-function read(code) {
-  var offset = 0;
-  var length = code.length;
-  var tokens = [];
-  while (offset < length) {
-    var c = code[offset];
-    if (c === )
-
-  }
-  var offset = 0;
-  var tokens = [];
-  var length = code.length;
-  while (offset < length) {
-    var part = code.substring(offset);
-  }
-}
-
-
-// A little lisp style evaluater
-function* exec(command) {
-  if (!Array.isArray(command)) {
-    throw new TypeError("Commands must be arrays");
-  }
-  var fn = command[0];
-  // Assume the first is a symbol if it's a string
-  if (typeof fn === "string") {
-    fn = this[fn];
-  }
-  // If it's an array, execute it to get the result.
-  else if (Array.isArray(fn)) {
-    fn = yield* exec.call(this, fn);
-  }
-  if (typeof fn !== "function") {
-    throw new TypeError("First item must be function");
-  }
-  var args = command.slice(1);
-  // Evaluate arguments for non-raw functions
-  if (!fn.raw) {
-    for (var i = 0, l = args.length; i < l; ++i) {
-      if (Array.isArray(args[i])) {
-        args[i] = yield* exec.call(this, args[i]);
-      }
-    }
-  }
-  if (fn.constructor === Function) {
-    return fn.apply(apis, args);
-  }
-  return yield* fn.apply(apis, args);
-}
-
-require('gen-run')(exec(command, apis));
+require('gen-run')(function* () {
+  var command = template('(add 1 2)')[0];
+  log({command: command});
+  log({result: yield* exec.call(apis, command)});
+  command = template('(slowAdd 1 2)')[0];
+  log({command: command});
+  log({result: yield* exec.call(apis, command)});
+  command = template('(slowerAdd 1 2)')[0];
+  log({command: command});
+  log({result: yield* exec.call(apis, command)});
+  command = template('(list (slowerAdd 1 2) (slowAdd 3 4) (add 5 6))')[0];
+  log({command: command});
+  log({result: yield* exec.call(apis, command)});
+  command = template('(map "slower" (slowerAdd 1 2) "slow" (slowAdd 3 4) "add" (add 5 6))')[0];
+  log({command: command});
+  log({result: yield* exec.call(apis, command)});
+});

@@ -24,6 +24,12 @@
 
 var exports = {};
 
+exports.isId = isId;
+
+function isId(value) {
+  return value instanceof Id ? value.id : false;
+}
+
 var cache = {};
 function Id(id) {
   if (cache[id]) return cache[id];
