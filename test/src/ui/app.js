@@ -41,12 +41,7 @@ function App(emit, refresh) {
     };
   }
 
-  var api ={
-    add: function (a, b) {
-      return a + b;
-    }
-  };
-
+  var api;
   var output = "";
   var outputMode = "text";
 
@@ -55,7 +50,8 @@ function App(emit, refresh) {
     on: {change: onChangeCode},
   };
 
-  function render() {
+  function render(newApi) {
+    api = newApi;
 
     return [
       [".toolbar",
@@ -126,6 +122,5 @@ function App(emit, refresh) {
     if (newCode === code) return;
     code = newCode;
     localStorage.setItem("code", code);
-    refresh();
   }
 }

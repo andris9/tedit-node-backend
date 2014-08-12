@@ -4,6 +4,7 @@ var exec = require('./exec');
 var bincodec = require('./bincodec');
 var run = require('gen-run');
 var consume = require('culvert/consume');
+var zlib = require('./zlib-codec');
 var template = bincodec.template;
 
 // Given an API and a socket channel, return a call function.
@@ -11,9 +12,9 @@ var template = bincodec.template;
 // The api is the top-level scope for remote code that's run locally.
 function rpc(channel, api) {
 
-  var send = bincodec.encoder(channel.put);
+  var send = bincodec.encoder(zlib.deflater(channel.put));
 
-  var decode = bincodec.decoder(function (message) {
+  var decode = zlib.inflater(bincodec.decoder(function (message) {
     console.log(message);
 
     if (!Array.isArray(message)) {
@@ -42,7 +43,7 @@ function rpc(channel, api) {
       }
       send(message);
     });
-  });
+  }));
 
   consume(channel, decode)(function (err) {
     if (err) {

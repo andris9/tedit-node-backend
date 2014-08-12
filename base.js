@@ -67,7 +67,7 @@ module.exports = {
     for (var i = 1, l = arguments.length; i < l; ++i) {
       sum /= arguments[i];
     }
-    return sum;
+    return sum|0;
   },
   "*": function () {
     if (!arguments.length) throw new TypeError("* needs at least one argument");

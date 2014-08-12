@@ -41,94 +41,100 @@ Id.prototype.inspect = Id.prototype.toString = function (_, opts) {
 };
 
 function encode(value) {
-  var ret, i, length;
-  if (value === null)      return write(0);
-  if (value === undefined) return write(1);
-  if (value === false)     return write(2);
-  if (value === true)      return write(3);
-  if (value instanceof Id) {
-    return writeBinary(0x20, bodec.fromUnicode(value.id));
-  }
-  if (typeof value === "string") {
-    return writeBinary(0x40, bodec.fromUnicode(value));
-  }
-  if (bodec.isBinary(value)) {
-    return writeBinary(0x60, value);
-  }
-  if (value|0 === value) {
-    if (value >= 0) {
-      return writeLength(0x80, value);
+  var bytes = [];
+  var seen = [];
+  encodePart(value);
+  return bodec.fromArray(bytes);
+
+  function encodePart(value) {
+    var ret, i, length;
+    if (value === null)      return write(0);
+    if (value === undefined) return write(1);
+    if (value === false)     return write(2);
+    if (value === true)      return write(3);
+    if (value instanceof Id) {
+      return writeBinary(0x20, bodec.fromUnicode(value.id));
     }
-    else {
-      return writeLength(0xa0, -value);
+    if (typeof value === "string") {
+      return writeBinary(0x40, bodec.fromUnicode(value));
+    }
+    if (bodec.isBinary(value)) {
+      return writeBinary(0x60, value);
+    }
+    if (value|0 === value) {
+      if (value >= 0) {
+        return writeLength(0x80, value);
+      }
+      else {
+        return writeLength(0xa0, -value);
+      }
+    }
+    // Write undefined for cycles.
+    if (seen.indexOf(value) >= 0) {
+      console.warn("cycle detected", value);
+      return write(1);
+    }
+    seen.push(value);
+    if (Array.isArray(value)) {
+      length = value.length;
+      ret = writeLength(0xc0, length);
+      for (i = 0; i < length; ++i) {
+        ret = encodePart(value[i]);
+      }
+      return ret;
+    }
+    if (typeof value === "object") {
+      var keys = Object.keys(value);
+      length = keys.length;
+      ret = writeLength(0xe0, length);
+      for (i = 0; i < length; ++i) {
+        var key = keys[i];
+        encodePart(key);
+        ret = encodePart(value[key]);
+      }
+      return ret;
+    }
+    // Write undefined for other data types;
+    console.warn("Illegal value: " + value);
+    return write(1);
+  }
+
+  function writeLength(prefix, length) {
+    var byte = prefix | (length & 0xf);
+    if (length < 0x10) return write(byte);
+    write(byte | 0x10);
+    length >>= 4;
+    while (length) {
+      byte = length & 0x7f;
+      if (length < 0x80) return write(byte);
+      write(byte | 0x80);
+      length >>= 7;
     }
   }
-  if (Array.isArray(value)) {
-    length = value.length;
-    ret = writeLength(0xc0, length);
-    for (i = 0; i < length; ++i) {
-      ret = encode(value[i]);
+
+  function writeBinary(prefix, binary) {
+    var length = binary.length;
+    var ret = writeLength(prefix, length);
+    for (var i = 0, l = binary.length; i < l; ++i) {
+      ret = write(binary[i]);
     }
     return ret;
   }
-  if (typeof value === "object") {
-    var keys = Object.keys(value);
-    length = keys.length;
-    ret = writeLength(0xe0, length);
-    for (i = 0; i < length; ++i) {
-      var key = keys[i];
-      encode(key);
-      ret = encode(value[key]);
-    }
-    return ret;
+
+  function write(byte) {
+    bytes.push(byte|0);
+    return true;
   }
-  console.error("Illegal value", value);
-  throw new Error("Illegal value");
+
 }
 
-function writeLength(prefix, length) {
-  var byte = prefix | (length & 0xf);
-  if (length < 0x10) return write(byte);
-  write(byte | 0x10);
-  length >>= 4;
-  while (length) {
-    byte = length & 0x7f;
-    if (length < 0x80) return write(byte);
-    write(byte | 0x80);
-    length >>= 7;
-  }
-}
 
-function writeBinary(prefix, binary) {
-  var length = binary.length;
-  var ret = writeLength(prefix, length);
-  for (var i = 0, l = binary.length; i < l; ++i) {
-    ret = write(binary[i]);
-  }
-  return ret;
-}
-
-var bytes = [];
-function write(byte) {
-  bytes.push(byte|0);
-  return true;
-}
-
-function flush() {
-  var bin = bodec.fromArray(bytes);
-  bytes.length = 0;
-  return bin;
-}
-
-exports.encode = function (value) {
-  encode(value);
-  return flush();
-};
+exports.encode = encode;
 
 exports.encoder = encoder;
 function encoder(emit) {
   return function (value) {
-    var encoded = exports.encode(value);
+    var encoded = encode(value);
     emit(encoded);
   };
 }
@@ -272,7 +278,7 @@ function decoder(emit) {
 }
 
 var ignorePattern = /^(?:\s+|--.*)/;
-var constantPattern = /^(?:true\b|false\b:null\b|-?[0-9]+|"(?:[^"\r\n\\]|\\.)*")/;
+var constantPattern = /^(?:true\b|false\b|null\b|-?[0-9]+|"(?:[^"\r\n\\]|\\.)*")/;
 var idPattern = /^[^(){}[\];:'"`,\s]+/;
 
 exports.template = template;
