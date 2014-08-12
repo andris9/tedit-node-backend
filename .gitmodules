@@ -58,3 +58,23 @@
 	ref = refs/heads/master
 	prefix = hynwz1ho-c19oe9
 	path = node_modules/pathjoin
+[submodule "node_modules/codemirror"]
+	url = git@github.com:marijnh/codemirror.git
+	ref = refs/heads/master
+	prefix = hyqd7qv0-cdtpnb
+	path = node_modules/codemirror
+[submodule "node_modules/cm-jackl-mode"]
+	url = git@github.com:creationix/cm-jackl-mode.git
+	ref = refs/heads/master
+	prefix = hyqdaa6i-1qlfdfa
+	path = node_modules/cm-jackl-mode
+[submodule "node_modules/cm-notebook-theme"]
+	url = git@github.com:creationix/cm-notebook-theme.git
+	ref = refs/heads/master
+	prefix = hyqdamuk-1ckem0k
+	path = node_modules/cm-notebook-theme
+[submodule "node_modules/domchanger"]
+	url = git@github.com:creationix/domchanger.git
+	ref = refs/heads/master
+	prefix = hyqdfsva-4ix29h
+	path = node_modules/domchanger

@@ -1,51 +1,33 @@
 "use strict";
 
-// TODO: Implement dot access
-// TODO: Implement def and other lisp builtins userspace
-
 var isId = require('./bincodec').isId;
-var run = require('gen-run');
 module.exports = exec;
 // A little lisp style evaluater
 function* exec(command) {
   /*jshint validthis:true*/
-  if (!Array.isArray(command)) {
-    throw new TypeError("Commands must be arrays");
-  }
-  var fn = command[0];
-  // Assume the first is a symbol if it's a string
   var id;
-  if ((id = isId(fn))) {
-    fn = this[id];
+  if ((id = isId(command))) {
+    return getVar(this, id);
   }
-  // If it's an array, execute it to get the result.
-  else if (Array.isArray(fn)) {
-    fn = yield* exec.call(this, fn);
-  }
+  // Normal values pass through untouched.
+  if (!Array.isArray(command)) return command;
+  var fn = yield* exec.call(this, command[0]);
+  if (typeof fn === "object") fn = accessor(fn);
   if (typeof fn !== "function") {
     throw new TypeError("First item must be function");
   }
   var args = command.slice(1);
   // Evaluate arguments for non-raw functions
   if (!fn.raw) {
-    var tasks = [];
-    var api = this;
-    args.forEach(function (arg, i) {
+    for (var i = 0, l = args.length; i < l; ++i) {
+      var arg = args[i];
       if ((id = isId(arg))) {
-        args[i] = this[id];
+        args[i] = getVar(this, id);
       }
       else if (Array.isArray(args[i])) {
-        tasks.push(function (callback) {
-          run(exec.call(api, arg), function (err, result) {
-            if (err) return callback(err);
-            args[i] = result;
-            callback();
-          });
-        });
+        args[i] = yield* exec.call(this, arg);
       }
-    });
-    // If there are async tasks, run them in parallel
-    if (tasks.length) yield tasks;
+    }
   }
   if (fn.constructor === Function) {
     var result = fn.apply(this, args);
@@ -55,4 +37,41 @@ function* exec(command) {
     return result;
   }
   return yield* fn.apply(this, args);
+}
+
+function getVar(root, id) {
+  var value = root;
+  var parent = null;
+  var parts = id.split(".");
+  for (var i = 0, l = parts.length; i < l; ++i) {
+    var part = parts[i];
+    if (!(part in value)) {
+      console.error(value, part);
+      if (i) {
+        throw new Error("No such property: " + part);
+      }
+      throw new Error("No such variable: " + part);
+    }
+    parent = value;
+    value = value[part];
+  }
+  if (typeof value === "function" && parent !== root) {
+    var isRaw = value.raw;
+    value = value.bind(parent);
+    if (isRaw) value.raw = true;
+  }
+  return value;
+}
+
+
+function accessor(obj) {
+  return function (key, value) {
+    if (arguments.length === 1) {
+      return obj[key];
+    }
+    if (arguments.length === 2) {
+      return (obj[key] = value);
+    }
+    throw new Error("maps and lists must be called with one or two arguments when used as functions.");
+  };
 }

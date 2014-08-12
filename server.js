@@ -9,6 +9,7 @@ var exec = require('./exec');
 var bincodec = require('./bincodec');
 var inspect = require('util').inspect;
 var consume = require('culvert/consume');
+var isId = require('./bincodec').isId;
 
 function log() {
   console.log([].slice.call(arguments).map(function (item) {
@@ -64,7 +65,7 @@ function onConnection(socket) {
       code = 500;
       headers = [["Content-Type", "text/plain"]];
       console.error(err.stack);
-      body = bodec.fromUnicode(err.stack + "\n");
+      body = bodec.fromUnicode(err.message + "\n");
     }
     if (bodec.isBinary(body)) {
       headers.push(["Content-Length", body.length]);
@@ -126,8 +127,9 @@ function* handleRequest(channel) {
     var id = message.shift();
     run(function* () {
       var ret;
+      var scope = Object.create(api);
       for (var i = 0, l = message.length; i < l; ++i) {
-        ret = yield* exec.call(api, message[i]);
+        ret = yield* exec.call(scope, message[i]);
       }
       return ret;
     }, function (err, result) {
@@ -159,45 +161,36 @@ require('git-node-fs/mixins/fs-db')(repo, "/Users/tim/Desktop/tedit.git");
 require('js-git/mixins/walkers')(repo);
 require('js-git/mixins/formats')(repo);
 
-api = repo;
+defForm.raw = true;
+function* defForm(id) {
+  var name = isId(id);
+  if (!name) throw new TypeError("First argument to def must be id");
+  if (this.hasOwnProperty(name)) {
+    throw new Error("Can't redefine existing local variable: " + name);
+  }
+  var body = [].slice.call(arguments, 1);
+  var ret = null;
+  for (var i = 0, l = body.length; i < l; ++i) {
+    ret = yield* exec.call(this, body[i]);
+  }
+  this[name] = ret;
+  return ret;
+}
 
-// var api = {
-//   list: function () {
-//     return [].slice.call(arguments);
-//   },
-//   map: function () {
-//     var obj = {};
-//     for (var i = 0, l = arguments.length; i < l; i += 2) {
-//       obj[arguments[i]] = arguments[i + 1];
-//     }
-//     return obj;
-//   },
-//   add: function add(a, b) {
-//     return a + b;
-//   },
-//   slowAdd: function slowAdd(a, b) {
-//     return function (callback) {
-//       setTimeout(function () {
-//         callback(null, a + b);
-//       }, 500);
-//     };
-//   },
-//   slowerAdd: function* slowerAdd(a, b) {
-//     return yield function (callback) {
-//       setTimeout(function () {
-//         callback(null, a + b);
-//       }, 500);
-//     };
-//   },
-//   readFile: function readFile(path, encoding) {
-//     return function (callback) {
-//       fs.readFile(path, encoding, function (err, result) {
-//         if (err) {
-//           if (err.code === "ENOENT") return callback();
-//           return callback(err);
-//         }
-//         return callback(null, result);
-//       });
-//     }
-//   }
-// };
+var api = Object.create(require('./base'));
+
+// Expose a js-git repo for testing
+api.repo = repo;
+
+// And a file reader
+api.readFile = function readFile(path, encoding) {
+  return function (callback) {
+    fs.readFile(path, encoding, function (err, result) {
+      if (err) {
+        if (err.code === "ENOENT") return callback();
+        return callback(err);
+      }
+      return callback(null, result);
+    });
+  };
+};

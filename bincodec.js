@@ -82,6 +82,7 @@ function encode(value) {
     }
     return ret;
   }
+  console.error("Illegal value", value);
   throw new Error("Illegal value");
 }
 
