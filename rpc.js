@@ -15,7 +15,6 @@ function rpc(channel, api) {
   var send = bincodec.encoder(zlib.deflater(channel.put));
 
   var decode = zlib.inflater(bincodec.decoder(function (message) {
-    console.log(message);
 
     if (!Array.isArray(message)) {
       return callbacks[message.id](message.err);
@@ -63,7 +62,6 @@ function rpc(channel, api) {
     }
     var id = nextId++;
     command = [id].concat(command);
-    console.log(command);
     return yield function (callback) {
       callbacks[id] = callback;
       send(command);

@@ -71,7 +71,7 @@ function encode(value) {
     }
     // Write undefined for cycles.
     if (seen.indexOf(value) >= 0) {
-      console.warn("cycle detected", value);
+      // console.warn("cycle detected", value);
       return write(1);
     }
     seen.push(value);
@@ -95,7 +95,7 @@ function encode(value) {
       return ret;
     }
     // Write undefined for other data types;
-    console.warn("Illegal value: " + value);
+    // console.warn("Illegal value: " + value);
     return write(1);
   }
 

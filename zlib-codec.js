@@ -139,18 +139,19 @@ function inflater(emit) {
 if (module.parent === null) {
 
   var inflate = inflater(function (chunk) {
-    console.log("INFLATED", chunk && chunk.length);
+    console.log("I ", chunk && chunk.length);
   });
 
   var deflate = deflater(function (chunk) {
-    console.log("DEFLATED", chunk && chunk.length);
+    console.log(" D", chunk && chunk.length);
     inflate(chunk);
   });
 
   var inspect = require('util').inspect;
 
+  deflate(inspect(process, {color:true,depth:null}));
+  deflate(inspect(process, {depth:null}));
   deflate(inspect(process));
   deflate(inspect(process, {colors:true}));
-  deflate(inspect(process, {depth:null}));
   deflate();
 }

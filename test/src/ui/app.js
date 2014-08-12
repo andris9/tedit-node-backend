@@ -5,7 +5,7 @@ var CodeMirrorEditor = require('./code-mirror-editor');
 var CodeMirrorViewer = require('./code-mirror-viewer');
 
 var rpc = require('rpc');
-var wrapWebSocket = require('../wrap-web-socket');
+var wrapWebSocket = require('culvert/wrap-web-socket');
 var template = require('bincodec').template;
 var run = require('gen-run');
 
