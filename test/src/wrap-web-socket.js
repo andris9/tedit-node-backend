@@ -4,101 +4,47 @@ module.exports = wrapNodeSocket;
 
 // Given a browser websocket, return a culvert duplex channel.
 function wrapNodeSocket(ws, reportError) {
-  // Data traveling from node socket to consumer
+  // Data traveling from websocket to consumer
   var incoming = makeChannel();
-  // Data traveling from consumer to node socket
+  // Data traveling from consumer to websocket
   var outgoing = makeChannel();
 
-  var onDrain2 = wrapHandler(onReadable, onError);
   onTake = wrapHandler(onTake, onError);
-
-  var paused = false;
-  var ended = false;
-
   outgoing.take(onTake);
+
   ws.onerror = onError;
   ws.onmessage = wrap(onMessage, onError);
   ws.onclose = wrap(onClose, onError);
 
   function onError(err) {
-    if (err.code === "EPIPE" || err.code === "ECONNRESET") {
-      return onEnd();
-    }
     if (reportError) return reportError(err);
     console.error(err.stack);
   }
 
   function onMessage(evt) {
-    throw new Error("TODO: handle websocket message");
+    if (evt.data instanceof ArrayBuffer) {
+      incoming.put(new Uint8Array(evt.data));
+    }
   }
 
   function onClose(evt) {
-    throw new Error("TODO: handle websocket close");
+    incoming.put();
   }
 
   function onTake(data) {
-    if (ended) return;
     // console.log("TAKE", data);
     if (data === undefined) {
-      ended = true;
-      return socket.end();
+      ws.close();
+      return;
     }
-    if (socket.write(data)) {
-      outgoing.take(onTake);
-    }
-    else {
-      if (!paused) paused = true;
-    }
-  }
-
-  function onDrain() {
-    if (paused) {
-      paused = false;
-      outgoing.take(onTake);
-    }
-  }
-
-  function onEnd() {
-    if (ended) return;
-    ended = true;
-    incoming.put(undefined);
-  }
-
-  function onReadable() {
-    if (ended) return;
-    while (true) {
-      var chunk = socket.read();
-      // console.log("READ", chunk);
-      if (!chunk) return;
-      if (!incoming.put(chunk)) {
-        incoming.drain(onDrain2);
-        return;
-      }
-    }
-  }
-
-  var originalOut = outgoing.put;
-  var originalInn = incoming.put;
-
-  function setCodecs() {
-    var out = originalOut;
-    var inn = originalInn;
-    for (var i = 0, l = arguments.length; i < l; ++i) {
-      var codec = arguments[i];
-      if (codec.encoder) out = codec.encoder(out);
-      if (codec.decoder) inn = codec.decoder(inn);
-    }
-    outgoing.put = out;
-    incoming.put = inn;
+    ws.send(data);
+    outgoing.take(onTake);
   }
 
   return {
-    put: function (item) {
-      return outgoing.put(item);
-    },
+    put: outgoing.put,
     drain: outgoing.drain,
     take: incoming.take,
-    setCodecs: setCodecs
   };
 }
 

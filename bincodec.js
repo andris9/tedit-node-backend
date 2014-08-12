@@ -271,7 +271,7 @@ function decoder(emit) {
   }
 }
 
-var ignorePattern = /^\s+/;
+var ignorePattern = /^(?:\s+|--.*)/;
 var constantPattern = /^(?:true\b|false\b:null\b|-?[0-9]+|"(?:[^"\r\n\\]|\\.)*")/;
 var idPattern = /^[^(){}[\];:'"`,\s]+/;
 

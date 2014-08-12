@@ -5,11 +5,9 @@ var wrapNodeSocket = require('culvert/wrap-node-socket');
 var run = require('gen-run');
 var bodec = require('bodec');
 var sha1 = require('git-sha1');
-var exec = require('./exec');
-var bincodec = require('./bincodec');
 var inspect = require('util').inspect;
-var consume = require('culvert/consume');
-var isId = require('./bincodec').isId;
+var rpc = require('./rpc');
+var addCodec = require('culvert/add-codec');
 
 function log() {
   console.log([].slice.call(arguments).map(function (item) {
@@ -26,9 +24,9 @@ server.listen(1337, function () {
 var magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 function onConnection(socket) {
-  var channel = wrapNodeSocket(socket);
-  channel.setCodecs(httpCodec);
-  run(handleRequest(channel), function (err, res) {
+  var tcpChannel = wrapNodeSocket(socket);
+  var httpChannel = addCodec(tcpChannel, httpCodec);
+  run(handleRequest(httpChannel, socket), function (err, res) {
     var code, headers, body;
     if (!err) {
       if (!res) return;
@@ -70,17 +68,17 @@ function onConnection(socket) {
     if (bodec.isBinary(body)) {
       headers.push(["Content-Length", body.length]);
     }
-    channel.put({
+    httpChannel.put({
       code: code,
       headers: headers,
     });
-    if (body) channel.put(body);
-    channel.put();
+    if (body) httpChannel.put(body);
+    httpChannel.put();
   });
 }
 
-function* handleRequest(channel) {
-  var req = yield channel.take;
+function* handleRequest(httpChannel, socket) {
+  var req = yield httpChannel.take;
 
   if (req.method !== "GET") {
     return [405, ["Allow", "GET"]];
@@ -103,7 +101,7 @@ function* handleRequest(channel) {
     bodec.decodeHex(sha1(key + magic))
   );
 
-  channel.put({
+  httpChannel.put({
     code: 101,
     headers: [
       ["Upgrade", "websocket"],
@@ -113,46 +111,28 @@ function* handleRequest(channel) {
     ]
   });
 
-  channel.setCodecs(websocketCodec);
-
-  var send = bincodec.encoder(function (chunk) {
-    return channel.put({
-      fin: 1,
-      opcode: 2,
-      body: chunk
-    });
-  });
-  var decode = bincodec.decoder(function (message) {
-    log(message);
-    var id = message.shift();
-    run(function* () {
-      var ret;
-      var scope = Object.create(api);
-      for (var i = 0, l = message.length; i < l; ++i) {
-        ret = yield* exec.call(scope, message[i]);
-      }
-      return ret;
-    }, function (err, result) {
-      var message;
-      if (err) {
-        console.error(err.stack);
-        message = {id:id,err:err.stack};
-      }
-      else {
-        message = [-id, result];
-      }
-      log(message);
-      send(message);
-    });
-
-  });
-  consume(channel, function (item) {
-    if (item.opcode === 2) decode(item.body);
-  })(function () {
-    console.log("Disconnected");
+  // Add the websocket framing protocol to the stream
+  // The new channel speaks raw type 2 binary messages.
+  var wsChannel = addCodec(httpChannel, {
+    encoder: function (emit) {
+      var send = websocketCodec.encoder(emit);
+      return function (item) {
+        send({opcode: 2, body: item});
+      };
+    },
+    decoder: function (emit) {
+      return websocketCodec.decoder(function (item) {
+        if (item.opcode === 2) return emit(item.body);
+      });
+    }
   });
 
-
+  console.log("New RPC client", socket.address());
+  var call = rpc(wsChannel, api);
+  setTimeout(function () {
+    console.log("calling client");
+    run(call('(add 1 2)'));
+  }, 100);
 }
 
 var fs = require('fs');
@@ -160,22 +140,6 @@ var repo = {};
 require('git-node-fs/mixins/fs-db')(repo, "/Users/tim/Desktop/tedit.git");
 require('js-git/mixins/walkers')(repo);
 require('js-git/mixins/formats')(repo);
-
-defForm.raw = true;
-function* defForm(id) {
-  var name = isId(id);
-  if (!name) throw new TypeError("First argument to def must be id");
-  if (this.hasOwnProperty(name)) {
-    throw new Error("Can't redefine existing local variable: " + name);
-  }
-  var body = [].slice.call(arguments, 1);
-  var ret = null;
-  for (var i = 0, l = body.length; i < l; ++i) {
-    ret = yield* exec.call(this, body[i]);
-  }
-  this[name] = ret;
-  return ret;
-}
 
 var api = Object.create(require('./base'));
 

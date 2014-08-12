@@ -45,4 +45,44 @@ module.exports = {
   list: list,
   object: object,
   scope: scope,
+  "+": function () {
+    if (!arguments.length) throw new TypeError("+ needs at least one argument");
+    var sum = arguments[0];
+    for (var i = 1, l = arguments.length; i < l; ++i) {
+      sum += arguments[i];
+    }
+    return sum;
+  },
+  "-": function () {
+    if (!arguments.length) throw new TypeError("- needs at least one argument");
+    var sum = arguments[0];
+    for (var i = 1, l = arguments.length; i < l; ++i) {
+      sum -= arguments[i];
+    }
+    return sum;
+  },
+  "/": function () {
+    if (!arguments.length) throw new TypeError("/ needs at least one argument");
+    var sum = arguments[0];
+    for (var i = 1, l = arguments.length; i < l; ++i) {
+      sum /= arguments[i];
+    }
+    return sum;
+  },
+  "*": function () {
+    if (!arguments.length) throw new TypeError("* needs at least one argument");
+    var sum = arguments[0];
+    for (var i = 1, l = arguments.length; i < l; ++i) {
+      sum *= arguments[i];
+    }
+    return sum;
+  },
+  "%": function () {
+    if (!arguments.length) throw new TypeError("% needs at least one argument");
+    var sum = arguments[0];
+    for (var i = 1, l = arguments.length; i < l; ++i) {
+      sum %= arguments[i];
+    }
+    return sum;
+  },
 };
