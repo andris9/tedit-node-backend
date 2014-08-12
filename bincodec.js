@@ -284,6 +284,10 @@ var idPattern = /^[^(){}[\];:'"`,\s]+/;
 exports.template = template;
 // Parse lisp syntax and replace some variables with values.
 function template(string, values) {
+  if (typeof string === "function") {
+    string = string.toString().
+    string = string.substring(string.indexOf("{") + 1, string.lastIndexOf("}"));
+  }
   values = values || {};
   var current = [];
   var stack = [];

@@ -7,15 +7,20 @@ var consume = require('culvert/consume');
 var zlib = require('./zlib-codec');
 var template = bincodec.template;
 
+
 // Given an API and a socket channel, return a call function.
 // The channel is a duplex socket to the remote party
 // The api is the top-level scope for remote code that's run locally.
 function rpc(channel, api) {
 
+  // When sending, encode as binary lisp and then deflate.
   var send = bincodec.encoder(zlib.deflater(channel.put));
 
-  var decode = zlib.inflater(bincodec.decoder(function (message) {
+  // When reading, inflate and then decide binary lisp.
+  var decode = zlib.inflater(bincodec.decoder(onMessage));
 
+  function onMessage(message) {
+    console.log("IN", message);
     if (!Array.isArray(message)) {
       return callbacks[message.id](message.err);
     }
@@ -42,7 +47,7 @@ function rpc(channel, api) {
       }
       send(message);
     });
-  }));
+  }
 
   consume(channel, decode)(function (err) {
     if (err) {
@@ -62,6 +67,7 @@ function rpc(channel, api) {
     }
     var id = nextId++;
     command = [id].concat(command);
+    console.log("OUT", command);
     return yield function (callback) {
       callbacks[id] = callback;
       send(command);

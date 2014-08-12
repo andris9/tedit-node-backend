@@ -31,7 +31,7 @@ function* exec(command) {
   }
   if (fn.constructor === Function) {
     var result = fn.apply(this, args);
-    if (typeof result === "function") {
+    if (typeof result === "function" && result.constructor === Function) {
       return yield result;
     }
     return result;

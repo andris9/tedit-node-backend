@@ -111,7 +111,7 @@ function App(emit, refresh) {
         refresh();
       }
       else {
-        output = JSON.stringify(result, null, 2);
+        output = "" + JSON.stringify(result, null, 2);
         outputMode = "javascript";
         refresh();
       }

@@ -18,6 +18,38 @@ function* def(id) {
   return ret;
 }
 
+lambda.raw = true;
+function lambda(ids) {
+
+  if (!Array.isArray(ids)) throw new TypeError("First item must be list of ids");
+  var names = new Array(ids.length);
+  for (var i = 0, l = ids.length; i < l; ++i) {
+    var name = isId(ids[i]);
+    if (!name) throw new TypeError("Only ids allowed in lambda arguments list");
+    names[i] = name;
+  }
+  var body = [].slice.call(arguments, 1);
+
+  return λ;
+
+  function* λ() {
+    if (arguments.length !== names.length) {
+      throw new Error("Argument length mismatch");
+    }
+    var scope = Object.create(this);
+    for (var i = 0, l = names.length; i < l; ++i) {
+      scope[names[i]] = arguments[i];
+    }
+    var ret;
+    for (i = 0, l = body.length; i < l; ++i) {
+      console.log(body[i])
+      ret = yield* exec.call(scope, body[i]);
+    }
+    return ret;
+  }
+
+}
+
 function print() {
   console.log([].slice.call(arguments).map(function (item) {
     return inspect(item, {colors:true,depth:null});
@@ -41,6 +73,7 @@ function scope() { return this; }
 
 module.exports = {
   def: def,
+  λ: lambda,
   print: print,
   list: list,
   object: object,
