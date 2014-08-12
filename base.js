@@ -68,12 +68,66 @@ function object() {
   return obj;
 }
 
+and.raw = true;
+function* and() {
+  var ret;
+  for (var i = 0, l = arguments.length; i < l; ++i) {
+    ret = yield* exec.call(this, arguments[i]);
+    if (!ret) return ret;
+  }
+  return ret;
+}
+
+or.raw = true;
+function* or() {
+  var ret;
+  for (var i = 0, l = arguments.length; i < l; ++i) {
+    ret = yield* exec.call(this, arguments[i]);
+    if (ret) return ret;
+  }
+  return ret;
+}
+
+unless.raw = true;
+function* unless(cond) {
+  if (yield* exec.call(this, cond)) return;
+  var ret;
+  for (var i = 1, l = arguments.length; i < l; ++i) {
+    ret = yield* exec.call(this, arguments[i]);
+  }
+  return ret;
+}
+
+$if.raw = true;
+function* $if(cond) {
+  if (!(yield* exec.call(this, cond))) return;
+  var ret;
+  for (var i = 1, l = arguments.length; i < l; ++i) {
+    ret = yield* exec.call(this, arguments[i]);
+  }
+  return ret;
+}
+
+function* tri(cond, yes, no) {
+  if (tri.length !== 3) throw new TypeError("? must be used with 3 arguments");
+  if (yield* exec.call(this, cond)) {
+    return yield* exec.call(this, yes);
+  }
+  return yield* exec.call(this, no);
+}
+
+
 // This function opens up some wide security holes to programs that can run arbitrary lisp programs.
 function scope() { return this; }
 
 module.exports = {
   def: def,
   λ: lambda,
+  and: and,
+  or: or,
+  unless: unless,
+  if: $if,
+  "?": tri,
   print: print,
   list: list,
   object: object,
