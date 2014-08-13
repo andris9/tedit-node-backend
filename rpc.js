@@ -13,6 +13,8 @@ var template = bincodec.template;
 // The api is the top-level scope for remote code that's run locally.
 function rpc(channel, api) {
 
+  var scope = Object.create(api);
+
   // When sending, encode as binary lisp and then deflate.
   var send = bincodec.encoder(zlib.deflater(channel.put));
 
@@ -31,7 +33,6 @@ function rpc(channel, api) {
 
     run(function* () {
       var ret;
-      var scope = Object.create(api);
       for (var i = 0, l = message.length; i < l; ++i) {
         ret = yield* exec.call(scope, message[i]);
       }

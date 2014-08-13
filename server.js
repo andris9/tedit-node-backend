@@ -128,11 +128,7 @@ function* handleRequest(httpChannel, socket) {
   });
 
   console.log("New RPC client", socket.address());
-  var call = rpc(wsChannel, api);
-  setTimeout(function () {
-    console.log("calling client");
-    run(call('(add 1 2)'));
-  }, 100);
+  rpc(wsChannel, api);
 }
 
 var fs = require('fs');
