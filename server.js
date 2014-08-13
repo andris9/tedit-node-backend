@@ -117,11 +117,13 @@ function* handleRequest(httpChannel, socket) {
     encoder: function (emit) {
       var send = websocketCodec.encoder(emit);
       return function (item) {
+        if (item === undefined) return emit();
         send({opcode: 2, body: item});
       };
     },
     decoder: function (emit) {
       return websocketCodec.decoder(function (item) {
+        if (item === undefined) return emit();
         if (item.opcode === 2) return emit(item.body);
       });
     }
@@ -141,6 +143,7 @@ var api = Object.create(require('./base'));
 
 // Expose a js-git repo for testing
 api.repo = repo;
+api.walk = require('js-git/mixins/walkers').walk;
 
 // And a file reader
 api.readFile = function readFile(path, encoding) {

@@ -46,6 +46,7 @@ function rpc(channel, api) {
       else {
         message = [-id, result];
       }
+      console.log("OUT", message);
       send(message);
     });
   }
@@ -68,9 +69,9 @@ function rpc(channel, api) {
     }
     var id = nextId++;
     command = [id].concat(command);
-    console.log("OUT", command);
     return yield function (callback) {
       callbacks[id] = callback;
+      console.log("OUT", command);
       send(command);
     };
   };

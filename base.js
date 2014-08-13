@@ -18,13 +18,7 @@ function* def(id) {
   if (this.hasOwnProperty(name)) {
     throw new Error("Can't redefine existing local variable: " + name);
   }
-  var body = [].slice.call(arguments, 1);
-  var ret = null;
-  for (var i = 0, l = body.length; i < l; ++i) {
-    ret = yield* exec.call(this, body[i]);
-  }
-  this[name] = ret;
-  return ret;
+  return (this[name] = yield* execBlock.call(this, arguments, 1));
 }
 
 set.raw = true;
@@ -43,14 +37,7 @@ function* set(id) {
     base = Object.getPrototypeOf(base);
   }
   if (!base) throw new Error("No such variable: " + name);
-  var body = [].slice.call(arguments, 1);
-  var ret = null;
-  for (var i = 0, l = body.length; i < l; ++i) {
-    ret = yield* exec.call(this, body[i]);
-  }
-  base[name] = ret;
-  return ret;
-
+  return (base[name] = yield* execBlock.call(this, arguments, 1));
 }
 
 lambda.raw = true;
@@ -76,11 +63,7 @@ function lambda(ids) {
     for (var i = 0, l = names.length; i < l; ++i) {
       scope[names[i]] = arguments[i];
     }
-    var ret;
-    for (i = 0, l = body.length; i < l; ++i) {
-      ret = yield* exec.call(scope, body[i]);
-    }
-    return ret;
+    return yield* execBlock.call(scope, body);
   }
 
 }
@@ -129,22 +112,15 @@ unless.raw = true;
 function* unless(cond) {
   /*jshint validthis:true*/
   if (yield* exec.call(this, cond)) return;
-  var ret;
-  for (var i = 1, l = arguments.length; i < l; ++i) {
-    ret = yield* exec.call(this, arguments[i]);
-  }
-  return ret;
+  return yield* execBlock.call(this, arguments, 1);
 }
 
 $if.raw = true;
 function* $if(cond) {
   /*jshint validthis:true*/
-  if (!(yield* exec.call(this, cond))) return;
-  var ret;
-  for (var i = 1, l = arguments.length; i < l; ++i) {
-    ret = yield* exec.call(this, arguments[i]);
+  if (yield* exec.call(this, cond)) {
+    return yield* execBlock.call(this, arguments, 1);
   }
-  return ret;
 }
 
 function* tri(cond, yes, no) {
@@ -169,38 +145,211 @@ function* $while(cond) {
   return ret;
 }
 
-function* $for() {
-
+$for.raw = true;
+function* $for(inputs) {
+  /*jshint validthis:true*/
+  var iterator = yield* parallelLoop.call(this, inputs);
+  return yield* forGeneric.call(this, iterator, arguments);
 }
 
-function* map() {
-
+forStar.raw = true;
+function* forStar(inputs) {
+  /*jshint validthis:true*/
+  var iterator = yield* nestedLoop.call(this, inputs);
+  return yield* forGeneric.call(this, iterator, arguments);
 }
+
+map.raw = true;
+function* map(inputs) {
+  /*jshint validthis:true*/
+  var iterator = yield* parallelLoop.call(this, inputs);
+  return yield* mapGeneric.call(this, iterator, arguments);
+}
+
+mapStar.raw = true;
+function* mapStar(inputs) {
+  /*jshint validthis:true*/
+  var iterator = yield* nestedLoop.call(this, inputs);
+  return yield* mapGeneric.call(this, iterator, arguments);
+}
+
+function* forGeneric(iterator, args) {
+  /*jshint validthis:true*/
+  var scope, ret;
+  while (yield* iterator.call(scope = Object.create(this))) {
+    ret = yield* execBlock.call(scope, args, 1);
+  }
+  return ret;
+}
+
+function* mapGeneric(iterator, args) {
+  /*jshint validthis:true*/
+  var scope, result = [];
+  while (yield* iterator.call(scope = Object.create(this))) {
+    var ret = yield* execBlock.call(scope, args, 1);
+    if (ret !== undefined) result.push(ret);
+  }
+  return result;
+}
+
+function* parallelLoop(inputs) {
+  /*jshint validthis:true*/
+  var pairs = [];
+  for (var i = 0; i < inputs.length; i += 2) {
+    var name = isId(inputs[i]);
+    if (!name) throw new TypeError("loop heads require variable/iteratable pairs");
+    var value = getIterable(yield* exec.call(this, inputs[i + 1]));
+    pairs.push(name, value);
+  }
+  if (!pairs.length) return empty;
+  if (pairs.length === 2) {
+    return simpleIter(pairs[0], pairs[1]);
+  }
+  return parallelIter(pairs);
+}
+
+function* nestedLoop(inputs) {
+  /*jshint validthis:true*/
+  if (!inputs.length) return empty;
+  var inner;
+  for (var i = inputs.length - 2; i >= 0; i -= 2) {
+    inner = inner ?
+      (makeNested(inputs[i], inputs[i + 1], inner)) :
+      (makeSimple(inputs[i], inputs[i + 1]));
+  }
+  return yield* inner();
+}
+
+function makeSimple(id, raw) {
+  var name = isId(id);
+  if (!name) throw new TypeError("loop heads require variable/iteratable pairs");
+  return function* () {
+    var fn = getIterable(yield* exec.call(this, raw));
+    return simpleIter(name, fn);
+  };
+}
+
+function makeNested(id, raw, makeInner) {
+  var name = isId(id);
+  if (!name) throw new TypeError("loop heads require variable/iteratable pairs");
+  return function* () {
+    /*jshint validthis:true*/
+    var fn = getIterable(yield* exec.call(this, raw));
+    var value, inner;
+    return function* nested() {
+      while (true) {
+        if (value === undefined) {
+          value = yield* getNext.call(this, fn);
+          if (value === undefined) return false;
+          inner = yield* makeInner.call(this);
+        }
+        if (!(yield* inner.call(this))) {
+          value = undefined;
+          inner = undefined;
+          continue;
+        }
+        break;
+      }
+      this[name] = value;
+      return true;
+    };
+  };
+}
+
+function* empty() {}
+
+function parallelIter(pairs) {
+  return function* parallel() {
+    /*jshint validthis:true*/
+    for (var i = 0; i < pairs.length; i += 2) {
+      var fn = pairs[i + 1];
+      var value = yield* getNext.call(this, fn);
+      if (value === undefined) return false;
+      this[pairs[i]] = value;
+    }
+    return true;
+  };
+}
+
+function simpleIter(name, fn) {
+  return function* simple() {
+    var value = yield* getNext.call(this, fn);
+    if (value === undefined) return false;
+    this[name] = value;
+    return true;
+  };
+}
+
+function* getNext(fn) {
+  /*jshint validthis:true*/
+  if (fn.constructor === Function) {
+    var value = fn.call(this);
+    if (typeof value === "function" && value.constructor === Function) {
+      return yield value;
+    }
+    return value;
+  }
+  return yield* fn.call(this);
+}
+
+function* execBlock(body, i) {
+  i = i|0;
+  /*jshint validthis:true*/
+  var ret;
+  for (var l = body.length; i < l; ++i) {
+    ret = yield* exec.call(this, body[i]);
+  }
+  return ret;
+}
+
+function getIterable(item) {
+  if (item|0 === item) return integerIterator(item);
+  if (Array.isArray(item)) return arrayIterator(item);
+  if (typeof item === "function") return item;
+  throw new TypeError("Expected iterable value");
+}
+
+function integerIterator(num) {
+  var i = 0;
+  return function range() {
+    if (i < num) return i++;
+  };
+}
+
+function arrayIterator(array) {
+  var i = 0;
+  return function loop() {
+    if (i < array.length) return array[i++];
+  };
+}
+
 
 module.exports = {
-  for: $for,
-  map: map,
-  while: $while,
-  clear: function () {
+  "for": $for,
+  "for*": forStar,
+  "map": map,
+  "map*": mapStar,
+  "while": $while,
+  "clear": function clear() {
     var keys = Object.keys(this);
     for (var i = 0, l = keys.length; i < l; ++i) {
       delete this[keys[i]];
     }
   },
-  scope: function () { return this; },
-  def: def,
-  set: set,
-  λ: lambda,
-  lambda: lambda,
-  and: and,
-  or: or,
-  unless: unless,
-  if: $if,
+  "scope": function scope() { return this; },
+  "def": def,
+  "set": set,
+  "λ": lambda,
+  "lambda": lambda,
+  "and": and,
+  "or": or,
+  "unless": unless,
+  "if": $if,
   "?": tri,
-  print: print,
-  list: list,
-  object: object,
-  "+": function () {
+  "print": print,
+  "list": list,
+  "object": object,
+  "+": function plus() {
     if (!arguments.length) throw new TypeError("+ needs at least one argument");
     var sum = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
@@ -208,7 +357,7 @@ module.exports = {
     }
     return sum;
   },
-  "-": function () {
+  "-": function minus() {
     if (!arguments.length) throw new TypeError("- needs at least one argument");
     var sum = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
@@ -216,7 +365,7 @@ module.exports = {
     }
     return sum;
   },
-  "/": function () {
+  "÷": function divide() {
     if (!arguments.length) throw new TypeError("/ needs at least one argument");
     var sum = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
@@ -224,7 +373,7 @@ module.exports = {
     }
     return sum|0;
   },
-  "*": function () {
+  "×": function times() {
     if (!arguments.length) throw new TypeError("* needs at least one argument");
     var sum = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
@@ -232,7 +381,7 @@ module.exports = {
     }
     return sum;
   },
-  "%": function () {
+  "%": function modulus() {
     if (!arguments.length) throw new TypeError("% needs at least one argument");
     var sum = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
@@ -240,7 +389,7 @@ module.exports = {
     }
     return sum;
   },
-  "<": function () {
+  "<": function lt() {
     var a = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
       var b = arguments[i];
@@ -249,7 +398,7 @@ module.exports = {
     }
     return true;
   },
-  "≤": function () {
+  "≤": function lte() {
     var a = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
       var b = arguments[i];
@@ -258,7 +407,7 @@ module.exports = {
     }
     return true;
   },
-  ">": function () {
+  ">": function gt() {
     var a = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
       var b = arguments[i];
@@ -267,7 +416,7 @@ module.exports = {
     }
     return true;
   },
-  "≥": function () {
+  "≥": function gte() {
     var a = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
       var b = arguments[i];
@@ -276,7 +425,7 @@ module.exports = {
     }
     return true;
   },
-  "≠": function () {
+  "≠": function neq() {
     var a = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
       var b = arguments[i];
@@ -284,7 +433,7 @@ module.exports = {
       a = b;
     }
   },
-  "=": function () {
+  "=": function eq() {
     var a = arguments[0];
     for (var i = 1, l = arguments.length; i < l; ++i) {
       var b = arguments[i];
@@ -293,6 +442,8 @@ module.exports = {
     }
   },
 };
+module.exports["*"] = module.exports["×"];
+module.exports["/"] = module.exports["÷"];
 module.exports["!="] = module.exports["≠"];
 module.exports["<="] = module.exports["≤"];
 module.exports[">="] = module.exports["≥"];

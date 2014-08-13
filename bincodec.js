@@ -96,7 +96,10 @@ function encode(value) {
     }
     // Write undefined for other data types;
     // console.warn("Illegal value: " + value);
-    return write(1);
+    if (typeof value === "function") {
+      return encodePart(value.toString().replace(/\{[\s\S]*\}/, "{}"));
+    }
+    return encodePart(Object.prototype.toString.call(value));
   }
 
   function writeLength(prefix, length) {
