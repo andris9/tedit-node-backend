@@ -190,6 +190,7 @@ pre.CodeMirror {
   bottom: 50%;
 }
 .bottom {
+  border-top: 1px solid #888;
   top: 50%;
   bottom: 0;
 }
@@ -203,6 +204,7 @@ pre.CodeMirror {
   right: 50%;
 }
 .right {
+  border-left: 1px solid #888;
   left: 50%;
   right: 0;
 }
